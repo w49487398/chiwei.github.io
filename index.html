@@ -57,7 +57,7 @@
     <div id="response" class="response"></div>
   </div>
 
-  <!-- Firebase SDK (非 module 版) -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
 
@@ -138,6 +138,7 @@
       }
     }
 
+    // ✅ 這是關鍵：用事件監聽器綁定按鈕，不用 onclick！
     document.getElementById("sendButton").addEventListener("click", startChat);
   </script>
 </body>
