@@ -59,10 +59,11 @@
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
 
   <script>
-    // ✅ Firebase 初始化
+    // ✅ 初始化 Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBWawAkhOAZBhro19o8XJ6Bmb5xbdcy9uQ",
       authDomain: "chiwei-github.firebaseapp.com",
@@ -72,10 +73,23 @@
       appId: "1:1001291196727:web:396150768114266f2792b2",
       measurementId: "G-HR2K0PDGFM"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
+    let currentUID = null;
+
+    // ✅ 匿名登入，並儲存 UID
+    auth.signInAnonymously()
+      .then(() => {
+        currentUID = auth.currentUser.uid;
+        console.log("✅ 匿名登入成功，UID：", currentUID);
+      })
+      .catch((error) => {
+        console.error("登入失敗：", error);
+      });
+
+    // 🔐 從 Firestore 抓 API 金鑰
     async function getAPIKey() {
       const docRef = db.collection("settings").doc("openai");
       const docSnap = await docRef.get();
@@ -86,15 +100,22 @@
       }
     }
 
+    // 💬 開始對話
     async function startChat() {
       const userInput = document.getElementById("userInput").value.trim();
       const responseDiv = document.getElementById("response");
+
       if (!userInput) {
-        alert("請先輸入一些內容！");
+        alert("請先輸入內容！");
         return;
       }
 
-      responseDiv.innerText = "AI 正在思考中，請稍候...";
+      if (!currentUID) {
+        alert("尚未登入 Firebase，請稍候重試");
+        return;
+      }
+
+      responseDiv.innerText = "AI 正在思考中...";
 
       try {
         const apiKey = await getAPIKey();
@@ -125,10 +146,11 @@
         const aiReply = data.choices?.[0]?.message?.content || "AI 沒有回應，請稍後再試。";
         responseDiv.innerText = aiReply;
 
-        // 儲存對話紀錄
+        // ✍️ 儲存資料，加上 uid
         await db.collection("user_logs").add({
           user_input: userInput,
           ai_reply: aiReply,
+          uid: currentUID,
           created_at: new Date()
         });
 
@@ -138,7 +160,7 @@
       }
     }
 
-    // ✅ 這是關鍵：用事件監聽器綁定按鈕，不用 onclick！
+    // 綁定送出按鈕
     document.getElementById("sendButton").addEventListener("click", startChat);
   </script>
 </body>
