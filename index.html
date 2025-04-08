@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI 減重教練</title>
   <style>
     body {
@@ -57,12 +57,12 @@
     <div id="response" class="response"></div>
   </div>
 
-  <!-- Firebase + AI 整合 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+  <!-- Firebase SDK (非 module 版) -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
 
-    // ✅ 你的 Firebase 設定
+  <script>
+    // ✅ Firebase 初始化
     const firebaseConfig = {
       apiKey: "AIzaSyBWawAkhOAZBhro19o8XJ6Bmb5xbdcy9uQ",
       authDomain: "chiwei-github.firebaseapp.com",
@@ -73,21 +73,19 @@
       measurementId: "G-HR2K0PDGFM"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    // 🔐 從 Firebase Firestore 抓 OpenAI API 金鑰
     async function getAPIKey() {
-      const ref = doc(db, "settings", "openai");
-      const snapshot = await getDoc(ref);
-      if (snapshot.exists()) {
-        return snapshot.data().apiKey;
+      const docRef = db.collection("settings").doc("openai");
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        return docSnap.data().apiKey;
       } else {
-        throw new Error("⚠️ 無法取得 OpenAI API Key。請確認 Firestore 中 settings/openai 是否存在。");
+        throw new Error("⚠️ 找不到 OpenAI API 金鑰！");
       }
     }
 
-    // 💬 主流程：送出訊息給 GPT 並存入 Firebase
     async function startChat() {
       const userInput = document.getElementById("userInput").value.trim();
       const responseDiv = document.getElementById("response");
@@ -127,11 +125,11 @@
         const aiReply = data.choices?.[0]?.message?.content || "AI 沒有回應，請稍後再試。";
         responseDiv.innerText = aiReply;
 
-        // 📝 將對話紀錄存入 Firestore
-        await addDoc(collection(db, "user_logs"), {
+        // 儲存對話紀錄
+        await db.collection("user_logs").add({
           user_input: userInput,
           ai_reply: aiReply,
-          created_at: serverTimestamp()
+          created_at: new Date()
         });
 
       } catch (err) {
@@ -140,7 +138,6 @@
       }
     }
 
-    // ✅ 設定按鈕事件監聽器（不使用 onclick）
     document.getElementById("sendButton").addEventListener("click", startChat);
   </script>
 </body>
