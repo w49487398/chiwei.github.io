@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 減重教練</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", sans-serif;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      max-width: 800px;
+      margin: auto;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #4CAF50;
+      text-align: center;
+    }
+    textarea, button {
+      width: 100%;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #e8f5e9;
+      border-radius: 6px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧠 AI 減重教練</h1>
+    <p>今天的狀態如何？跟我分享一下吧：</p>
+    <textarea id="userInput" rows="4" placeholder="輸入今天的心情、挑戰或任何想法..."></textarea>
+    <button onclick="startChat()">送出</button>
+    <div id="response" class="response"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWawAkhOAZBhro19o8XJ6Bmb5xbdcy9uQ",
+      authDomain: "chiwei-github.firebaseapp.com",
+      projectId: "chiwei-github",
+      storageBucket: "chiwei-github.firebasestorage.app",
+      messagingSenderId: "1001291196727",
+      appId: "1:1001291196727:web:396150768114266f2792b2",
+      measurementId: "G-HR2K0PDGFM"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function getAPIKey() {
+      const ref = doc(db, "settings", "openai");
+      const snapshot = await getDoc(ref);
+      if (snapshot.exists()) {
+        return snapshot.data().apiKey;
+      } else {
+        throw new Error("無法取得 OpenAI API Key，請確認 Firestore 中 settings/openai 是否存在。");
+      }
+    }
+
+    async function startChat() {
+      const userInput = document.getElementById("userInput").value.trim();
+      const responseDiv = document.getElementById("response");
+      if (!userInput) {
+        alert("請先輸入一些內容！");
+        return;
+      }
+
+      responseDiv.innerText = "AI 正在思考中，請稍候...";
+
+      try {
+        const apiKey = await getAPIKey();
+
+        const result = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content: "你是一位溫暖、鼓勵性的減重教練，請幫助使用者釐清心情、找出障礙並給予實用建議與一句激勵語。"
+              },
+              {
+                role: "user",
+                content: userInput
+              }
+            ],
+            temperature: 0.7
+          })
+        });
+
+        const data = await result.json();
+        const aiReply = data.choices?.[0]?.message?.content || "AI 沒有回應，請稍後再試。";
+        responseDiv.innerText = aiReply;
+
+        // 存入 Firestore
+        await addDoc(collection(db, "user_logs"), {
+          user_input: userInput,
+          ai_reply: aiReply,
+          created_at: serverTimestamp()
+        });
+
+      } catch (err) {
+        console.error(err);
+        responseDiv.innerText = "⚠️ 發生錯誤：" + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
